@@ -1,82 +1,225 @@
 from flask import Flask, request, jsonify
 import os
 import sys
-
+from flasgger import Swagger
 from call_service import call_service
+from persistence import get_history_by_device
 
 app = Flask(__name__)
+swagger = Swagger(app)  # Initialize OpenAPI documentation
 
-# Process report with operation
 @app.route("/op", methods=["POST"])
 def handle_op():
-    # Print the full request data
-    print("*** Operation Request received ***")
-
+    """
+    Log an operation for a call.
+    
+    This endpoint records an operation performed during a call. 
+    If the call ID changes, the previous call data is saved and reset.
+    
+    ---
+    tags:
+      - Operations
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - call_id
+            - operation
+          properties:
+            call_id:
+              type: string
+              description: Unique identifier for the call session.
+            operation:
+              type: string
+              description: The name of the operation performed.
+            finished:
+              type: boolean
+              description: Indicates if the operation has been completed (default is false).
+    responses:
+      200:
+        description: Operation logged successfully.
+    """
     if request.is_json:
         json_data = request.get_json()
-        print("JSON Body:", json_data)
-
         call_id = json_data.get("call_id")
-        if call_id is not None:
-            # New call, save previous report
+        if call_id:
             if call_service.last_call_id and call_id != call_service.last_call_id:
                 call_service.save_call()
                 call_service.reset()
 
-            # Handle operations
             call_service.process_operations(call_id, json_data)
-
-            # Handle convo finish
             if json_data.get("done"):
                 call_service.save_call(True)
 
     sys.stdout.flush()
+    return jsonify({"message": "Operation logged successfully."})
 
-    return jsonify({"message": "Report operation logged."})
-
-# Process report with ticket
 @app.route("/ticket", methods=["POST"])
 def handle_ticket():
-    # Print the full request data
-    print("*** Ticket Request received ***")
-
+    """
+    Log a support ticket for a call.
+    
+    This endpoint records a support ticket associated with a call session.
+    If the call ID changes, the previous call data is saved and reset.
+    
+    ---
+    tags:
+      - Tickets
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - call_id
+            - ticket
+          properties:
+            call_id:
+              type: string
+              description: Unique identifier for the call session.
+            ticket:
+              type: object
+              description: A dictionary containing ticket details (e.g., issue description, priority level).
+    responses:
+      200:
+        description: Support ticket logged successfully.
+    """
     if request.is_json:
         json_data = request.get_json()
-        print("JSON Body:", json_data)
-
         call_id = json_data.get("call_id")
-        if call_id is not None:
-            # New call, save previous report
-
+        if call_id:
             if call_service.last_call_id and call_id != call_service.last_call_id:
                 call_service.save_call()
                 call_service.reset()
 
-            # Handle tickets
             call_service.process_tickets(call_id, json_data)
-            
-            # Handle convo finish
             if json_data.get("done"):
                 call_service.save_call(True)
 
     sys.stdout.flush()
+    return jsonify({"message": "Support ticket logged successfully."})
 
-    return jsonify({"message": "Report ticket logged."})
+@app.route("/device", methods=["POST"])
+def set_device():
+    """
+    Assign a device to a call session.
+    
+    This endpoint associates a device ID with an ongoing call session.
+    
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - call_id
+            - device_id
+          properties:
+            call_id:
+              type: string
+              description: Unique identifier for the call session.
+            device_id:
+              type: string
+              description: Unique identifier for the device involved in the call.
+    responses:
+      200:
+        description: Device ID successfully linked to the call session.
+    """
+    if request.is_json:
+        json_data = request.get_json()
+        call_id = json_data.get("call_id")
+        device_id = json_data.get("device_id")
+        if call_id and device_id:
+            call_service.set_device(call_id, device_id)
+            return jsonify({"message": "Device ID linked to call session."})
 
-# Html visualizer
+    return jsonify({"error": "Invalid request"}), 400
+
+@app.route("/history", methods=["GET"])
+def get_history():
+    """
+    Retrieve past tickets and unfinished operations for a specific device.
+    
+    This endpoint fetches historical data, including:
+    - All past support tickets
+    - Any unfinished operations (marked as `finished: false`)
+    
+    ---
+    tags:
+      - History
+    parameters:
+      - name: device_id
+        in: query
+        type: string
+        required: true
+        description: The unique identifier of the device to fetch history for.
+    responses:
+      200:
+        description: A JSON object containing the device’s historical records.
+        schema:
+          type: object
+          properties:
+            tickets:
+              type: array
+              items:
+                type: object
+              description: A list of past support tickets linked to the device.
+            unfinished_operations:
+              type: array
+              items:
+                type: object
+              description: A list of operations that have not yet been marked as finished.
+    """
+    device_id = request.args.get("device_id")
+    if not device_id:
+        return jsonify({"error": "Missing device_id parameter"}), 400
+
+    history = get_history_by_device(device_id)
+    return jsonify(history)
+
 @app.route("/stats", methods=["GET"])
 def show_stats():
+    """
+    View real-time call statistics.
+    
+    This endpoint returns an HTML page with details of the most recent call session,
+    including operations, tickets, and completion status.
+    
+    ---
+    tags:
+      - Statistics
+    responses:
+      200:
+        description: An HTML page displaying call session statistics.
+    """
     return call_service.show_call_info()
 
-# Reset all data
 @app.route("/reset", methods=["GET", "POST"])
 def reset_stats():
+    """
+    Reset all stored call data.
+    
+    This endpoint clears all stored call session data, including operations, tickets,
+    and device assignments.
+    
+    ---
+    tags:
+      - Reset
+    responses:
+      200:
+        description: Successfully reset all stored data.
+    """
     call_service.reset()
-    return jsonify({"message": "Data reset."})
-
+    return jsonify({"message": "All data has been reset."})
 
 if __name__ == "__main__":
-    # Heroku provides this environment variable
     port = int(os.environ.get("PORT", 5000))
-
     app.run(host="0.0.0.0", port=port)
