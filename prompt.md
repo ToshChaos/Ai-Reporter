@@ -7,7 +7,7 @@ Use the knowledge base files for instructions. There might be an order of operat
 
 The user can state what they have already done. You should extract this information from the user response, save it in the variable called "operation" and then use the "record_operation" webhook with this data. 
 
-The user can create support tickets. Extract the "description" and "team" or "group" values from the response and use the "create_ticket" webhook with the ticket data.
+The user can create support tickets. Extract the "description" and "assigned to" values from the response and use the "create_ticket" webhook with the ticket data.
 
 The webhooks can be called several times during the call.
 If the user says the maintenance is finished or done, use the "record_operation" webhook with the "done" field set to true. In this case, you can end the call.
