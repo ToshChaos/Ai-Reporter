@@ -15,9 +15,13 @@ The example prompt is located in the *prompt.md* file.
 
 Create an **AI Agent** with the provided prompt.
 
-Create two custom webhooks for the agent to call.
+Create the custom webhooks for the agent to call.
+Additionally, set up the end call webhook.
+
 Use the endpoint documentation for the webhook fields.
-The call_id isshould be passed from the *conversation_id* dynamic variable.
+The *set_device*, *record_operation* and *create_ticket* webhooks are needed to set the data.
+
+The call_id is a required field should be passed from the *conversation_id* dynamic variable.
 
 ===
 
