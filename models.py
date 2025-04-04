@@ -1,10 +1,9 @@
 class Operation:
-    def __init__(self, name, finished=False):
+    def __init__(self, name):
         self.name = name.capitalize()
-        self.finished = finished
 
     def to_dict(self):
-        return {"name": self.name, "finished": self.finished}
+        return {"name": self.name}
 
 
 class Ticket:
@@ -14,13 +13,10 @@ class Ticket:
             for key, value in details.items()
         }
 
+        # Add default fields if not provided
+        self.details.setdefault("reporter", "Unknown")
+        self.details.setdefault("status", "Open")
+
     def to_dict(self):
         return self.details
 
-
-class Device:
-    def __init__(self, device_id):
-        self.device_id = device_id
-
-    def to_dict(self):
-        return {"device_id": self.device_id}

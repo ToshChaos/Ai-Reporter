@@ -35,9 +35,6 @@ def handle_op():
             operation:
               type: string
               description: The name of the operation performed.
-            finished:
-              type: boolean
-              description: Indicates if the operation has been completed (default is false).
     responses:
       200:
         description: Operation logged successfully.
@@ -46,13 +43,9 @@ def handle_op():
         json_data = request.get_json()
         call_id = json_data.get("call_id")
         if call_id:
-            if call_service.last_call_id and call_id != call_service.last_call_id:
-                call_service.save_call()
-                call_service.reset()
+            call_service.check_new_call(call_id)
 
             call_service.process_operations(call_id, json_data)
-            if json_data.get("done"):
-                call_service.save_call(True)
 
     sys.stdout.flush()
     return jsonify({"message": "Operation logged successfully."})
@@ -92,13 +85,9 @@ def handle_ticket():
         json_data = request.get_json()
         call_id = json_data.get("call_id")
         if call_id:
-            if call_service.last_call_id and call_id != call_service.last_call_id:
-                call_service.save_call()
-                call_service.reset()
+            call_service.check_new_call(call_id)
 
             call_service.process_tickets(call_id, json_data)
-            if json_data.get("done"):
-                call_service.save_call(True)
 
     sys.stdout.flush()
     return jsonify({"message": "Support ticket logged successfully."})
@@ -138,6 +127,8 @@ def set_device():
         call_id = json_data.get("call_id")
         device_id = json_data.get("device_id")
         if call_id and device_id:
+            call_service.check_new_call(call_id)
+        
             call_service.set_device(call_id, device_id)
             return jsonify({"message": "Device ID linked to call session."})
 
@@ -219,6 +210,25 @@ def reset_stats():
     """
     call_service.reset()
     return jsonify({"message": "All data has been reset."})
+
+@app.route("/end", methods=["GET", "POST"])
+def finnish_call():
+    """
+    Save the call.
+    
+    This endpoint saves the current call data.
+    
+    ---
+    tags:
+      - Save
+    responses:
+      200:
+        description: Successfully stored call data.
+    """
+    if call_service.save_call() is None:
+      return jsonify({"message": "Call data saved."})
+    else:
+      return jsonify({"error": "Missing id"}), 400
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

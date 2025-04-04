@@ -20,15 +20,22 @@
         <div class="card p-4 text-center">
             <h1 class="mb-3 text-primary">Inspection Report</h1>
 
-            {% if last_call_id %}
-            <h4 class="text-success">Call ID: {{ last_call_id }}</h4>
+            {% if call_id %}
+            <h3 class="text-success">Call ID: {{ call_id }}</h3>
+                {% if device_id %}
+                <h4 class="text-success">Device: {{ device_id }}</h4>
+                {% else %}
+                <h4 class="text-success">Device unknown.</h4>
+                {% endif %}
             {% else %}
-            <h4 class="text-warning">Waiting for call...</h4>
+            <h3 class="text-warning">Waiting for call...</h3>
             <i class="bi bi-telephone-inbound"></i>
             <div class="progress">
                 <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 50%"></div>
             </div>
             {% endif %}
+
+
 
             <div class="row mt-4 mx-2">
                 <!-- Operations Section -->
@@ -38,7 +45,7 @@
                     <ul class="list-group">
                         {% for op in call_operations %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ op }}
+                            {{ op.name }}
                             <span class="glyphicon">✓</span>
                         </li>
                         {% endfor %}
